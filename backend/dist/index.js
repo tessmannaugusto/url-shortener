@@ -3,10 +3,17 @@ import express from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
 import { nanoid } from 'nanoid';
+import { z } from 'zod';
 dotenv.config();
 const app = express();
 app.use(cors());
 app.use(express.json());
+const originalUrlSchema = z.object({
+    originalUrl: z.string().url('Invalid URL')
+});
+const shortUrlSchema = z.object({
+    shortUrl: z.string().length(8, 'id must be 8 characters')
+});
 const mongoURI = process.env.MONGO_URI || 'server';
 const urlSchema = new mongoose.Schema({
     originalUrl: { type: String, required: true },
@@ -14,9 +21,15 @@ const urlSchema = new mongoose.Schema({
 });
 const Url = mongoose.model('Url', urlSchema);
 const router = express.Router();
-// Use as interfaces nas rotas
 router.post('/shortenurl', async (req, res) => {
-    const { originalUrl } = req.body;
+    const result = originalUrlSchema.safeParse(req.body);
+    if (!result.success) {
+        return res.status(400).json({
+            error: 'Validation failed',
+            issues: result.error.format()
+        });
+    }
+    const { originalUrl } = result.data;
     const shortUrl = nanoid(8);
     const newUrl = new Url({ originalUrl, shortUrl });
     try {
@@ -28,7 +41,14 @@ router.post('/shortenurl', async (req, res) => {
     }
 });
 router.get('/:shortUrl', async (req, res) => {
-    const { shortUrl } = req.params;
+    const result = shortUrlSchema.safeParse(req.params);
+    if (!result.success) {
+        return res.status(400).json({
+            error: 'Validation failed',
+            issues: result.error.format()
+        });
+    }
+    const { shortUrl } = result.data;
     try {
         const url = await Url.findOne({ shortUrl });
         if (url) {
@@ -42,7 +62,6 @@ router.get('/:shortUrl', async (req, res) => {
         return res.status(500).json({ error: 'Server error' });
     }
 });
-// Função para iniciar o servidor
 const startServer = async () => {
     try {
         await mongoose.connect(mongoURI);
@@ -56,5 +75,4 @@ const startServer = async () => {
         process.exit(1);
     }
 };
-// Inicia o servidor
 startServer();

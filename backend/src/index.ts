@@ -3,12 +3,21 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
 import { nanoid } from 'nanoid';
+import { z } from 'zod';
 
 dotenv.config();
 const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+const originalUrlSchema = z.object({
+  originalUrl: z.string().url('Invalid URL')
+})
+
+const shortUrlSchema = z.object({
+  shortUrl: z.string().length(8, 'id must be 8 characters')
+})
 
 const mongoURI = process.env.MONGO_URI || 'server';
 
@@ -23,7 +32,15 @@ const Url = mongoose.model('Url', urlSchema);
 const router = express.Router();
 
 router.post('/shortenurl', async (req: Request, res: Response) => {
-  const { originalUrl } = req.body;
+  const result = originalUrlSchema.safeParse(req.body);
+  if (!result.success) {
+    return res.status(400).json({ 
+      error: 'Validation failed', 
+      issues: result.error.format() 
+    });
+  }
+
+  const { originalUrl } = result.data;
   const shortUrl = nanoid(8);
   const newUrl = new Url({ originalUrl, shortUrl });
 
@@ -36,7 +53,14 @@ router.post('/shortenurl', async (req: Request, res: Response) => {
 });
 
 router.get('/:shortUrl', async (req: Request, res: Response) => {
-  const { shortUrl } = req.params;
+  const result = shortUrlSchema.safeParse(req.params);
+  if (!result.success){
+    return res.status(400).json({ 
+      error: 'Validation failed', 
+      issues: result.error.format() 
+    });
+  }
+  const { shortUrl } = result.data;
   try {
     const url = await Url.findOne({ shortUrl });
     if (url) {
