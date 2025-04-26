@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>URL Shortener</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>URL Shortener</h1>
+    <form id="url-form">
+      <input type="url" id="original-url" placeholder="Enter your URL here" required>
+      <button type="submit">Shorten URL</button>
+    </form>
+    <div id="result" class="hidden">
+      <p>Shortened URL:</p>
+      <a id="short-url" href="#" target="_blank"></a>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('url-form');
+    const resultDiv = document.getElementById('result');
+    const shortUrlLink = document.getElementById('short-url');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const originalUrl = document.getElementById('original-url').value;
+
+      try {
+        const response = await fetch('http://localhost:3000/api/shortenurl', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ originalUrl })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          shortUrlLink.href = `http://localhost:3000/api/${data.shortUrl}`;
+          shortUrlLink.textContent = `http://localhost:3000/api/${data.shortUrl}`;
+          resultDiv.classList.remove('hidden');
+        } else {
+          alert('Error: Unable to shorten the URL.');
+        }
+      } catch (error) {
+        alert('Error: Unable to connect to the server.');
+      }
+    });
+  </script>
+</body>
+</html>
